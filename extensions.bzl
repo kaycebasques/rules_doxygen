@@ -59,26 +59,34 @@ def _doxygen_repository(ctx):
             ctx.file("windows/libclang.dll", ctx.read("doxygen-dir/libclang.dll"), legacy_utf8 = False)
 
         elif platform == "mac" and ctx.os.name.startswith("mac"):
-            # For mac, download the dmg file, mount it and copy the executable
-            url = url % (doxygen_version_dash, doxygen_version, "dmg")
-            download_output = "doxygen.dmg"
-            ctx.download(
-                url = url,
-                output = download_output,
-                sha256 = sha256,
-                canonical_id = get_default_canonical_id(ctx, [url]),
-                auth = get_auth(ctx, [url]),
-            )
-
-            # Mount the dmg file
-            ctx.execute(["hdiutil", "attach", "-nobrowse", "-readonly", "-mountpoint", "doxygen-mount", download_output])
-
-            # Copy the doxygen executable to the repository
-            ctx.file("mac/doxygen", ctx.read("doxygen-mount/Doxygen.app/Contents/Resources/doxygen"), legacy_utf8 = False)
-
-            # Unmount the dmg file
-            ctx.execute(["hdiutil", "detach", "doxygen-mount"])
-
+            fail(ctx.os.arch)
+            if ctx.os.arch == "arm64":
+                url = ctx.attr.mac_arm_url
+                ctx.download_and_extract(
+                    url = url,
+                    output = download_output,
+                    sha256 = ctx.attr.mac_arm_sha256,
+                    type = ".zip",
+                    canonical_id = get_default_canonical_id(ctx, [url]),
+                    auth = get_auth(ctx, [url]),
+                )
+            else:
+                # For mac, download the dmg file, mount it and copy the executable
+                url = url % (doxygen_version_dash, doxygen_version, "dmg")
+                download_output = "doxygen.dmg"
+                ctx.download(
+                    url = url,
+                    output = download_output,
+                    sha256 = sha256,
+                    canonical_id = get_default_canonical_id(ctx, [url]),
+                    auth = get_auth(ctx, [url]),
+                )
+                # Mount the dmg file
+                ctx.execute(["hdiutil", "attach", "-nobrowse", "-readonly", "-mountpoint", "doxygen-mount", download_output])
+                # Copy the doxygen executable to the repository
+                ctx.file("mac/doxygen", ctx.read("doxygen-mount/Doxygen.app/Contents/Resources/doxygen"), legacy_utf8 = False)
+                # Unmount the dmg file
+                ctx.execute(["hdiutil", "detach", "doxygen-mount"])
         elif platform == "linux" and ctx.os.name == "linux":
             # For linux, download the tar.gz file and extract the executable
             url = url % (doxygen_version_dash, doxygen_version, "linux.bin.tar.gz")
@@ -220,6 +228,8 @@ _doxygen_version = tag_class(attrs = {
     "version": attr.string(doc = "The version of doxygen to use. If set to `0.0.0`, the doxygen executable will be assumed to be available from the PATH", mandatory = True),
     "sha256": attr.string(doc = "The sha256 hash of the doxygen archive. If not specified, an all-zero hash will be used."),
     "platform": attr.string(doc = "The target platform for the doxygen binary. Available options are (windows, mac, linux). If not specified, it will select the platform it is currently running on."),
+    "mac_arm_url": attr.string(doc = "TODO"),
+    "mac_arm_sha256": attr.string(doc = "TODO"),
 })
 
 doxygen_extension = module_extension(
